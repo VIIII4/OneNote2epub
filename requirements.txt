@@ -1,0 +1,5 @@
+pywintypes
+xml
+pathlib
+tqdm
+pywin32
