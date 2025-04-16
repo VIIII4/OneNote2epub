@@ -4,7 +4,7 @@ This is a simple tool to convert OneNote files to epub format.
 
 The latter part of this project was developed on Ubuntu and you just need to authorize the program when running it. Therefore, it is recommended to run the latter part on a Linux system. Using Windows would be more cumbersome. You need to turn off the antivirus software, run the program with administrator privileges, or make corresponding authorizations in the Windows Security Center (if you don't have 360 security software on your computer).
 
-It is inspired by[onenote-to-markdown](https://gitlab.com/pagekey/edu/onenote-to-markdown)
+It is inspired by [onenote-to-markdown](https://gitlab.com/pagekey/edu/onenote-to-markdown)
 
 ## Usage
 
@@ -33,7 +33,7 @@ python onenote_to_docx.py
 7. change the **LIBREOFFICE_PATH** in coreConver.py to your libreoffice path
 
 8. Open Calibre and install the EpubMerge plugin.
-![图片描述](https://raw.githubusercontent.com/用户名/仓库名/master/images/图片名.png)
+![Here](https://raw.githubusercontent.com/VIIII4/OneNote2epub/master/images/20250416105139.png)
 
 9. Run the main.py
 
