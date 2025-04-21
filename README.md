@@ -30,7 +30,7 @@ python onenote_to_docx.py
 
 6. Install [libreoffice](https://www.libreoffice.org/) and [Calibre](https://calibre-ebook.com/)
 
-7. change the **LIBREOFFICE_PATH** in coreConver.py to your libreoffice path
+7. change the **LIBREOFFICE_PATH** in coreConver.py to your libreoffice path or the exe path
 
 8. Open Calibre and install the EpubMerge plugin.
 ![Here](https://raw.githubusercontent.com/VIIII4/OneNote2epub/master/images/20250416105139.png)
