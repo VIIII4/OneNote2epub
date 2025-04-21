@@ -47,7 +47,7 @@ enjoy your notes on kindle!
 
 ## Defect
 
-The high - level part of the navigation directory in the epub file is normal, but the names of specific chapters are currently all empty (this will be fixed later when there is time). However, the content display is fine.
+A bit complex and inefficient
 
 ## Roast
 
