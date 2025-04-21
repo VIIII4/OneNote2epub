@@ -27,7 +27,7 @@ python onenote_to_docx.py
 
 6. 安装 [libreoffice](https://www.libreoffice.org/) 和 [Calibre](https://calibre-ebook.com/)
 
-7. 修改coreConver.py中的**LIBREOFFICE_PATH**为你的libreoffice安装路径
+7. 修改coreConver.py中的**LIBREOFFICE_PATH**为你的libreoffice安装路径,windows的为其exe路径
 
 8. 打开Calibre安装EpubMerge插件
 ![示例](https://raw.githubusercontent.com/VIIII4/OneNote2epub/master/images/20250416105139.png)
@@ -43,7 +43,7 @@ python main.py
 
 ## 已知缺陷
 
-epub文件的导航目录高层结构显示正常，但具体章节名称目前均为空（后续有时间会修复），不过内容显示正常。
+有点~~屎山~~
 
 ## 作者吐槽
 
