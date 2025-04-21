@@ -1,6 +1,6 @@
 from coreConver import Cmain
 from merger import merge_epub_folder
-import os
+import os,re,zipfile,tempfile
 from pathlib import Path
 import logging,shutil
 from datetime import datetime
@@ -15,6 +15,116 @@ def setup_logger():
         format="%(asctime)s - %(levelname)s - %(message)s"
     )
 
+def fix_unknown_titles(epub):
+    """ Fix 'Unknown Title' entries in EPUB toc.ncx files by extracting proper titles from content files
+    Uses regex instead of XML libraries
+
+    Args:
+        epub (str): Path to the EPUB file
+    Returns:
+        int: Number of titles fixed
+    """
+    temp_dir = tempfile.mkdtemp()
+    logging.info(f"Created temporary directory: {temp_dir}")
+    with zipfile.ZipFile(epub, 'r') as zip_ref:
+        zip_ref.extractall(temp_dir)
+        logging.info(f"Extracted EPUB to {temp_dir}")
+    epub_root = temp_dir
+    toc_path = os.path.join(epub_root, 'toc.ncx')
+    try:
+        if not os.path.exists(toc_path):
+            logging.warning(f"toc.ncx not found in {epub}")
+            return 0
+
+        # Read the toc.ncx file
+        with open(toc_path, 'r', encoding='utf-8') as file:
+            toc_content = file.read()
+        logging.info(f"Read toc.ncx content from {toc_path}")
+
+        # Pattern to find navPoint blocks
+        nav_point_pattern = re.compile(r'<navPoint\s+[^>]*id="([^"]+)"[^>]*>.*?</navPoint>', re.DOTALL)
+        nav_points = nav_point_pattern.findall(toc_content)
+
+        fixed_count = 0
+
+        # For each navPoint, check if it contains "Unknown Title"
+        for nav_point_id in nav_points:
+            # Extract the complete navPoint block
+            nav_pattern = re.compile(r'(<navPoint\s+[^>]*id="' + re.escape(nav_point_id) +
+                                     r'"[^>]*>.*?</navPoint>)', re.DOTALL)
+            nav_match = nav_pattern.search(toc_content)
+
+            if nav_match:
+                nav_block = nav_match.group(1)
+
+                # Check if this block contains "Unknown Title"
+                text_pattern = re.compile(r'<text>Unknown Title</text>')
+                if text_pattern.search(nav_block):
+                    # Extract the content src attribute
+                    content_pattern = re.compile(r'<content\s+src="([^"]+)"')
+                    content_match = content_pattern.search(nav_block)
+
+                    if content_match:
+                        content_src = content_match.group(1)
+                        content_path = os.path.join(epub_root, content_src)
+
+                        try:
+                            # Read the content file
+                            with open(content_path, 'r', encoding='utf-8') as file:
+                                content_data = file.read()
+                            logging.info(f"Read content from {content_path}")
+
+                            # Extract the title
+                            title_pattern = re.compile(r'<title>([^<]+)</title>')
+                            title_match = title_pattern.search(content_data)
+
+                            if title_match:
+                                actual_title = title_match.group(1)
+
+                                # Replace "Unknown Title" with the actual title
+                                updated_nav_block = re.sub(
+                                    r'<text>Unknown Title</text>',
+                                    f'<text>{actual_title}</text>',
+                                    nav_block
+                                )
+
+                                # Update the full content
+                                toc_content = toc_content.replace(nav_block, updated_nav_block)
+                                fixed_count += 1
+                                logging.info(f"Fixed: \"{actual_title}\" ({content_src})")
+                            else:
+                                logging.warning(f"No title found in {content_path}")
+                        except Exception as e:
+                            logging.error(f"Error processing content file {content_path}: {str(e)}")
+
+        # Write the updated toc.ncx file if changes were made
+        if fixed_count > 0:
+            with open(toc_path, 'w', encoding='utf-8') as file:
+                file.write(toc_content)
+            logging.info(f"Updated toc.ncx with {fixed_count} fixed titles")
+        else:
+            logging.info('No "Unknown Title" entries found in toc.ncx')
+
+        # 重新打包为 EPUB 文件
+        file_path = epub
+        with zipfile.ZipFile(file_path, 'w', zipfile.ZIP_DEFLATED) as zip_ref:
+            for root, _, files in os.walk(temp_dir):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    arcname = os.path.relpath(file_path, temp_dir)  # 获取相对路径
+                    zip_ref.write(file_path, arcname)
+        logging.info(f"Repackaged EPUB file: {file_path}")
+
+        return fixed_count
+
+    except Exception as e:
+        logging.error(f"Error processing toc.ncx: {str(e)}")
+        raise
+    finally:
+        # 删除临时文件夹
+        if os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)
+            logging.info(f"Deleted temporary directory: {temp_dir}")
 
 def delete_folder_contents(folder_path: str):
     """
@@ -77,16 +187,12 @@ def ConvertFirst(docx_folders):
     EpubList = []
     for folder in tqdm(docx_folders, desc="Converting folders"):
         output_dir = os.path.join('','internEpubs',f'{Path(folder).name}')
-        os.makedirs(output_dir, exist_ok=True)
         logging.info(f"Converting {folder}...")
         Cmain(source_folder=folder,output_folder=output_dir) 
         EpubList.append(output_dir)
-
     return EpubList
 
 def MergeEpub(EpubList):
-    output_dir = os.path.join('','finalEpubs')
-    os.makedirs(output_dir, exist_ok=True)
     for folder in tqdm(EpubList, desc="Merging EPUBs"):
         logging.info(f"Merging {folder}...")
         output = os.path.join('','finalEpubs',f'{Path(folder).name}.epub')
@@ -100,6 +206,8 @@ def MergeEpub(EpubList):
 
 
 if __name__ == "__main__":
+    os.makedirs(os.path.join('','internEpubs'), exist_ok=True)
+    os.makedirs(os.path.join('','finalEpubs'), exist_ok=True)
     setup_logger()
     delete_folder_contents(os.path.join('','finalEpubs'))
     delete_folder_contents(os.path.join('','internEpubs'))
@@ -118,16 +226,17 @@ if __name__ == "__main__":
         MergeEpub(EpubList)
         
         logging.info("Process completed successfully,see finalEpubs for result")
-        key = input("想要继续将这些书（onenote所有笔记)合成一本吗？(~~如果你电脑太烂那有概率死机~~）(y/n)")
+        key = input("想要继续将这些书（onenote所有笔记)合成一本吗？(~~有概率死机~~）(y/n)")
         if key == 'y' or key == 'Y':
-            shuming = input("请输入书名（可随意）")
-            zuozhe = input("请输入作者（可随意）")
+            shuming = input("请输入书名")
+            zuozhe = input("请输入作者")
             merge_epub_folder(os.path.join('','finalEpubs'),
                          output=os.path.join('',f'{shuming}.epub'),
                          title=str(shuming),
                          author=str(zuozhe),
                          sort="date_reverse"
                          )
+            fix_unknown_titles(os.path.join('',f'{shuming}.epub'))
             delete_folder_contents(os.path.join('','finalEpubs'))
             logging.info("Process completed successfully,see this root for result")
     except Exception as e:
